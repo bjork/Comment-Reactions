@@ -1,0 +1,5 @@
+.reactions .reaction {border-radius: 5px;border:1px solid #ccc;background:#fff;color:#333;text-transform: none;font-weight: normal;padding:.2em .4em;}
+.reactions .reaction.reacted{border-color:#966;background-color:#ccd}
+.reactions .reaction.reacting{color:#bbb;background:#999;}
+.reactions .reactions-num{color:#777;font-size:10px}
+.reactions .reactions-description{display:none;}
