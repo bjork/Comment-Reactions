@@ -175,10 +175,11 @@ function reactions_get_all_reactions() {
  */
 function reactions_show_after_comment_text( $comment_content, $comment = null ) {
 
-	// When comment is posted, the 'comment_text' filter is called without the second argument.
+	// When comment is posted, the 'itext' filter is called without the second argument.
 	if ( $comment && ! is_admin() ) {
-		reactions_show( $comment->comment_ID );
+		return $comment_content . reactions_show( $comment->comment_ID );
 	}
+	return $comment_content;
 }
 
 /**
@@ -188,7 +189,8 @@ function reactions_show_after_comment_text( $comment_content, $comment = null ) 
  */
 function reactions_show( $comment_id ) {
 
-	?><div class="reactions" data-comment_id="<?php echo esc_attr( $comment_id ) ?>"><?php
+	$html = '';
+	$html .= '<div class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><p>';
 
 	foreach ( reactions_get_available_reactions() as $reaction_alias => $reaction_info ) {
 
@@ -197,12 +199,14 @@ function reactions_show( $comment_id ) {
 			$count_reactions = 0;
 		}
 
-		reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions );
+		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions );
 	}
 
-	?><button class="show_all_reactions" title="<?php echo esc_attr( __( 'Add new', 'reactions' ) ) ?>">+</button><?php
+	$html .= '<button class="show_all_reactions" title="' . esc_attr( __( 'Add new', 'reactions' ) ) . '">+</button>';
 
-	?></div><?php
+	$html .= '</p></div>';
+
+	return $html;
 }
 
 function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0 ) {
@@ -228,39 +232,32 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 	 */
 	$description = apply_filters( 'reactions_description', $description, $symbol, $alias );
 
-	?><button title="<?php
+	$html = '<button class="reaction reaction-' . esc_attr( $alias ) . '" data-comment_id="' . $comment_id . '" data-reaction="' . $alias . '"><span class="reactions-symbol">';
 
-	echo esc_attr( $description );
+	$html .= esc_html( $symbol );
 
-	?>" data-comment_id="<?php echo esc_attr( $comment_id ) ?>" data-reaction="<?php
+	$html .= '</span> <span class="reactions-description">';
 
-	echo esc_attr( $alias );
+	$html .= esc_html( $description );
 
-	?>" class="reaction reaction-<?php
-
-	echo esc_attr( $alias );
-
-	?>"><span class="reactions-symbol"><?php
-
-	echo esc_html( $symbol );
-
-	?></span> <span class="reactions-description"><?php
-
-	echo esc_html( $description );
-
-	?></span> <span class="reactions-count"<?php
+	$html .= '</span> <span class="reactions-count"';
 
 	if ( $count <= 0 ) {
-		?> style="display:none"<?php
-	} ?>> <span class="reactions-num"><?php
+		$html .= ' style="display:none"';
+	}
 
-	echo $count;
+	$html .= '> <span class="reactions-num">';
 
-	?></span></span></button><?php
+	$html .= $count;
+
+	$html .= '</span></span></button>';
+
+	return $html;
 }
 
 function reactions_selector() {
-	?><script id="reactions_all_wrapper" type="text/html"><div id="reactions_all" style="display:none"><?php
+
+	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none"><?php
 
 	foreach ( reactions_get_all_reactions() as $reaction_alias => $reaction_info ) {
 		if ( 'section' == substr( $reaction_alias, 0, 7 ) ) {
@@ -268,7 +265,7 @@ function reactions_selector() {
 			continue;
 		}
 
-		reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'] );
+		echo reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'] );
 	}
 
 	?></div></script><?php
