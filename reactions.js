@@ -35,7 +35,7 @@ jQuery(function ($) {
 			if ( reactions_for_comment.length > 0 ) {
 				var reactions_data = reactions_for_comment.split( ':' );
 				var reaction_comment_id = reactions_data[0];
-				var the_reactions = reactions_data[1].split( ';' );
+				var the_reactions = reactions_data[1].split( '.' );
 
 				if ( '' == the_reactions[0] ) {
 					the_reactions = [];
@@ -55,9 +55,9 @@ jQuery(function ($) {
 		var response = [];
 		for ( var comment_id in reactions ) {
 			if ( reactions.hasOwnProperty( comment_id ) ) {
-				var reactions = reactions[ comment_id ];
-				if ( 'undefined' != typeof reactions ) {
-					response.push( comment_id + ':' + reactions.join( ';' ) );
+				var reactions_for_comment = reactions[ comment_id ];
+				if ( 'undefined' != typeof reactions_for_comment ) {
+					response.push( comment_id + ':' + reactions_for_comment.join( '.' ) );
 				}
 			}
 		}
@@ -75,7 +75,7 @@ jQuery(function ($) {
 		if ( 'undefined' != typeof reactions[ comment_id ] ) {
 
 			// If not already have the same reaction in the cookie, add it.
-			if ( $.inArray( reaction, reactions[ comment_id ] < 0 ) ) {
+			if ( $.inArray( reaction, reactions[ comment_id ] ) < 0 ) {
 				reactions[ comment_id ].push( reaction );
 			}
 		} else {
