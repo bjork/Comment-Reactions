@@ -52,8 +52,10 @@ function reactions_get_available_reactions() {
  * @param string     $comment_content The comment text.
  * @param WP_Comment $comment         The comment.
  */
-function reactions_show_after_comment_text( $comment_content, $comment ) {
-	reactions_show( $comment->comment_ID );
+function reactions_show_after_comment_text( $comment_content, $comment = null ) {
+	if ( $comment && ! is_admin() ) {
+		reactions_show( $comment->comment_ID );
+	}
 }
 
 /**
