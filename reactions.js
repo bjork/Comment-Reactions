@@ -108,24 +108,106 @@ jQuery(function ($) {
 
 		if ( 'undefined' != typeof user_reactions[ comment_id ]
 			&& $.inArray( reaction, user_reactions[ comment_id ] ) >= 0 ) {
-			delete user_reactions[ comment_id ][ $.inArray( reaction, user_reactions[ comment_id ] ) ];
+			user_reactions[ comment_id ].splice( $.inArray( reaction, user_reactions[ comment_id ] ), 1 );;
 		}
 
+		console.log(encode_reactions( user_reactions ));
+
 		createCookie( 'reactions', encode_reactions( user_reactions ), Reactions.cookie_days );
+
+		reactions = user_reactions;
 	}
 
 	/**
 	 * Update UI with count.
 	 */
 	function update_with_count( that, amount ) {
-		var current_count = parseInt( that.find('.reactions-count .reactions-num').html(), 10 );
-		var new_count = current_count + amount;
+		var old_count = parseInt( that.find('.reactions-count .reactions-num').html(), 10 );
+		var new_count;
+		if ( amount < 0 ) {
+			new_count = old_count - 1;
+		} else if ( '+1' === amount ) {
+			new_count = old_count + 1;
+		} else {
+			new_count = amount;
+		}
 		that.find('.reactions-count .reactions-num').html( new_count );
-		if ( new_count < 1 ) {
+		if ( new_count < 1 && ! that.hasClass('reaction-always-available') ) {
+			that.remove();
+		} if ( 0 == new_count ) {
 			that.find('.reactions-count').hide();
 		} else {
 			that.find('.reactions-count').show();
 		}
+	}
+
+	function set_and_attach_click_handler() {
+		$('#reactions_all .reaction').click(function () {
+			var that = $( this );
+
+			var reactions = that.parents( '.reactions' );
+			var existing = reactions.children('p').children( '.reaction-' + that.data( 'reaction' ) );
+
+			// Add the reaction if not already exists
+			if ( existing.length <= 0 ) {
+				var clone = that.clone();
+
+				that.parents( '#reactions_all' ).prev().prev().after( clone );
+
+				clone.click( reaction_click_handler );
+
+				existing = clone;
+			}
+
+			that.parents( '#reactions_all' ).hide();
+
+			existing.click();
+		});
+	}
+
+	function reaction_click_handler() {
+		var that = $( this );
+
+		// In the process of communicating with WordPress, do nothing.
+		if ( that.hasClass( 'reacting') ) {
+			return;
+		}
+
+		that.addClass( 'reacting' );
+
+		var comment_id = that.parents('.reactions').data('comment_id');
+		var reaction   = that.data('reaction');
+
+		// remove a reaction: -1, add one: 1
+		var direction = that.hasClass( 'reacted' ) ? -1 : '+1';
+
+		update_with_count( that, direction );
+
+		if ( '+1' == direction ) {
+			add_user_reaction( comment_id, reaction );
+		} else {
+			remove_user_reaction( comment_id, reaction );
+		}
+
+		jQuery.post(
+			Reactions.ajax_url, {
+				action:     'reaction-submit',
+				comment_id: comment_id,
+				reaction:   reaction,
+				method:     '+1' == direction ? 'react' : 'revert',
+			}, function( response ) {
+				that.removeClass( 'reacting' );
+
+				if ( response.success ) {
+					update_with_count( that, response.count );
+				} else {
+					// revert too hasty UI update
+					update_with_count( that, response.count );
+				}
+			}
+		);
+
+		that.toggleClass( 'reacted' );
 	}
 
 	$('.reactions .show_all_reactions').click(function () {
@@ -144,7 +226,7 @@ jQuery(function ($) {
 		that.after( all );
 
 		if ( attach_handlers ) {
-			attach_click_handler();
+			set_and_attach_click_handler();
 		}
 
 		that.toggleClass( 'reaction reacted' );
@@ -153,82 +235,7 @@ jQuery(function ($) {
 
 	});
 
-	function attach_click_handler() {
-		$('#reactions_all .reaction').click(function () {
-			var that = $( this );
-
-			// todo
-			// set data-comment_id
-
-			var reactions = that.parents( '#reactions_all' ).parent();
-			var existing = reactions.children( '.reaction-' + that.data( 'reaction' ) );
-
-			// Add the reaction if not already exists
-			if ( existing.length <= 0 ) {
-				var clone = that.clone();
-
-				var comment_id = reactions.data( 'comment_id' );
-				// For some reason setting data attribute value with data() does not work.
-				clone.attr( 'data-comment_id', comment_id );
-
-				clone.click( click_handler );
-
-				that.parents( '#reactions_all' ).prev().prev().after( clone );
-			}
-
-			that.parents( '#reactions_all' ).hide();
-
-			reactions.children( '.reaction-' + that.data( 'reaction' ) ).click();
-
-			that.parents( '#reactions_all' ).hide().prev().toggleClass( 'reaction reacted' );
-		});
-	}
-
-	function click_handler () {
-
-		var that = $( this );
-
-		// In the process of communicating with WordPress, do nothing.
-		if ( that.hasClass( 'reacting') ) {
-			return;
-		}
-
-		that.addClass( 'reacting' );
-
-		var comment_id = that.data('comment_id');
-		var reaction   = that.data('reaction');
-
-		// remove a reaction: -1, add one: 1
-		var direction = that.hasClass( 'reacted' ) ? -1 : 1;
-
-		update_with_count( that, direction );
-
-		jQuery.post(
-			Reactions.ajax_url, {
-				action:     'reaction-submit',
-				comment_id: comment_id,
-				reaction:   reaction,
-				method:     1 == direction ? 'react' : 'revert',
-			}, function( response ) {
-				that.removeClass( 'reacting' );
-
-				if ( response.success ) {
-					if ( 1 == direction ) {
-						add_user_reaction( comment_id, reaction );
-					} else {
-						remove_user_reaction( comment_id, reaction );
-					}
-				} else {
-					// revert too hasty UI update
-					update_with_count( that, direction == 1 ? -1 : 1 );
-				}
-			}
-		);
-
-		that.toggleClass( 'reacted' );
-	}
-
-	$('.reactions .reaction').click( click_handler );
+	$('.reactions .reaction').click( reaction_click_handler );
 
 	// Prepare reactions according to the cookie.
 	// For each reaction test if cookie is set and set class to reflect that.
@@ -236,7 +243,7 @@ jQuery(function ($) {
 
 		var reactions = get_user_reactions();
 
-		var comment_id = $( this ).data( 'comment_id' );
+		var comment_id = $( this ).parents('.reactions').data( 'comment_id' );
 		var reaction   = $( this ).data( 'reaction'   );
 
 		if ( 'undefined' != reactions[ comment_id ]

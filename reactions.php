@@ -8,8 +8,11 @@
  */
 
 // TODO: Version 1:
+// TODO: document the new functions
 // TODO: more emoji
-// TODO: only show all button if there really are more
+// TODO: position selector more intelligently
+// TODO: test in browsers
+// TODO: update version strings to 1.0
 
 define( 'REACTIONS_VERSION', '0.1.0' );
 
@@ -28,20 +31,17 @@ function reactions_load_textdomain() {
 }
 
 /**
- * Get the available reactions. Currently a hard-coded list.
+ * Get the always available reactions.
  *
  * @return array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
  *                          (the actual emoji) and 'description' (human readable text
  *                          description of the emoji) as a value.
  */
 function reactions_get_available_reactions() {
-	$available_reactions = array(
-		'thumbsup' => array( 'symbol' => '👍', 'description' => __( 'Thumbs up', 'reactions' ) ),
-		'thumbsups' => array( 'symbol' => '👍', 'description' => __( 'Thumbs up', 'reactions' ) ),
-	);
+	$available_reactions = array( 'thumbsup' );
 
 	/**
-	 * Available reactions.
+	 * Always available reactions.
 	 *
 	 * @since 0.1.0
 	 *
@@ -51,17 +51,6 @@ function reactions_get_available_reactions() {
 	 */
 	return apply_filters( 'reactions_available', $available_reactions );
 }
-
-add_filter( 'reactions_available', function ($reactions) {
-	$all = reactions_get_all_reactions();
-	$aliases_to_show = array( 'grinning', 'grin', 'joy', 'smiley', 'smile', 'sweat_smile', 'satisfied' );
-	$to_show = array();
-	foreach ($aliases_to_show as $key) {
-		$to_show[$key] = $all[$key];
-	}
-
-	return array_merge($reactions, $to_show );
-});
 
 function reactions_get_all_reactions() {
 	$all_reactions = array(
@@ -167,6 +156,32 @@ function reactions_get_all_reactions() {
 	return apply_filters( 'reactions_all', $all_reactions );
 }
 
+function get_comment_reactions( $comment_id, $always_available_reactions = array() ) {
+	$comment_meta = get_comment_meta( $comment_id );
+	$all = reactions_get_all_reactions();
+
+	$comment_reactions = array();
+
+	foreach ( $always_available_reactions as $always_available_reaction ) {
+		if ( isset( $all[ $always_available_reaction ] ) ) {
+			$reaction_to_add = $all[ $always_available_reaction ];
+			$reaction_to_add['available'] = 'always';
+			$comment_reactions[ $always_available_reaction ] = $reaction_to_add;
+		}
+	}
+
+	foreach ( $comment_meta as $single_meta => $meta_value ) {
+		if ( substr( $single_meta, 0, 10 ) == 'reactions_' ) {
+			$reaction = substr( $single_meta, 10 );
+			if ( isset( $all[ $reaction ] ) && ! isset( $comment_reactions[ $reaction ] ) ) {
+				$comment_reactions[ $reaction ] = $all[ $reaction ];
+			}
+		}
+	}
+
+	return $comment_reactions;
+}
+
 /**
  * Comment content filter to show reactions for the comment.
  *
@@ -192,14 +207,18 @@ function reactions_show( $comment_id ) {
 	$html = '';
 	$html .= '<div class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><p>';
 
-	foreach ( reactions_get_available_reactions() as $reaction_alias => $reaction_info ) {
+	$reactions_to_show = get_comment_reactions( $comment_id, reactions_get_available_reactions() );
+
+	foreach ( $reactions_to_show as $reaction_alias => $reaction_info ) {
 
 		$count_reactions = get_comment_meta( $comment_id, 'reactions_' . $reaction_alias, true );
 		if ( empty( $count_reactions ) ) {
 			$count_reactions = 0;
 		}
 
-		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions );
+		$is_always_available = isset( $reaction_info['available'] );
+
+		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions, $is_always_available );
 	}
 
 	$html .= '<button class="show_all_reactions" title="' . esc_attr( __( 'Add new', 'reactions' ) ) . '">+</button>';
@@ -209,7 +228,9 @@ function reactions_show( $comment_id ) {
 	return $html;
 }
 
-function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0 ) {
+function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0, $is_always_available = false ) {
+	$available_class = $is_always_available ? ' reaction-always-available' : '';
+
 	/**
 	 * Reaction symbol.
 	 *
@@ -232,7 +253,7 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 	 */
 	$description = apply_filters( 'reactions_description', $description, $symbol, $alias );
 
-	$html = '<button class="reaction reaction-' . esc_attr( $alias ) . '" data-comment_id="' . $comment_id . '" data-reaction="' . $alias . '"><span class="reactions-symbol">';
+	$html = '<button class="reaction reaction-' . esc_attr( $alias ) . $available_class . '" data-reaction="' . $alias . '"><span class="reactions-symbol">';
 
 	$html .= esc_html( $symbol );
 
@@ -257,7 +278,7 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 
 function reactions_selector() {
 
-	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none"><?php
+	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none;z-index:99"><?php
 
 	foreach ( reactions_get_all_reactions() as $reaction_alias => $reaction_info ) {
 		if ( 'section' == substr( $reaction_alias, 0, 7 ) ) {
@@ -317,7 +338,7 @@ function reactions_submit_reaction() {
 
 	// Bail early if comment does not exist or reaction not available.
 	$comment = get_comment( $comment_id );
-	if ( null == $comment || ! array_key_exists( $reaction, reactions_get_available_reactions() ) ) {
+	if ( null == $comment || ! array_key_exists( $reaction, reactions_get_all_reactions() ) ) {
 		echo json_encode( array( 'success' => false ) );
 		exit;
 	}
@@ -355,7 +376,7 @@ function reactions_submit_reaction() {
 	 */
 	do_action( 'reactions_after_submit', $method, $comment_id, $count );
 
-	echo json_encode( array( 'success' => true ) );
+	echo json_encode( array( 'success' => true, 'count' => $count ) );
 	exit;
 }
 
