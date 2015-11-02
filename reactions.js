@@ -132,7 +132,7 @@ jQuery(function ($) {
 			new_count = amount;
 		}
 		that.find('.reactions-count .reactions-num').html( new_count );
-		if ( new_count < 1 && ! that.hasClass('reaction-always-available') ) {
+		if ( new_count < 1 && ! that.hasClass('reaction-always-visible') ) {
 			that.remove();
 		} if ( 0 == new_count ) {
 			that.find('.reactions-count').hide();

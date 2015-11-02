@@ -31,28 +31,39 @@ function reactions_load_textdomain() {
 }
 
 /**
- * Get the always available reactions.
+ * Get the reactions available with one click.
  *
  * @return array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
  *                          (the actual emoji) and 'description' (human readable text
  *                          description of the emoji) as a value.
  */
-function reactions_get_available_reactions() {
-	$available_reactions = array( 'thumbsup' );
+function reactions_get_visible_reactions() {
+	$visible_reactions = array( 'thumbsup' );
 
 	/**
-	 * Always available reactions.
+	 * Reactions visible, available with one click.
 	 *
-	 * @since 0.1.0
+	 * @since 1.0.0
 	 *
-	 * @param array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
-	 *                         (the actual emoji) and 'description' (human readable text
-	 *                         description of the emoji) as a value.
+	 * @param array $reactions The reaction aliases.
 	 */
-	return apply_filters( 'reactions_available', $available_reactions );
+	return apply_filters( 'reactions_visible', $visible_reactions );
 }
 
+/**
+ * All reactions on the system.
+ *
+ * @return array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
+ *                          (the actual emoji) and 'description' (human readable text
+ *                          description of the emoji) as a value.
+ */
 function reactions_get_all_reactions() {
+	static $all_reactions;
+
+	if ( $all_reactions ) {
+		return $all_reactions;
+	}
+
 	$all_reactions = array(
 
 		'section' => __( 'People', 'reactions' ),
@@ -156,17 +167,25 @@ function reactions_get_all_reactions() {
 	return apply_filters( 'reactions_all', $all_reactions );
 }
 
-function get_comment_reactions( $comment_id, $always_available_reactions = array() ) {
+/**
+ * Get reactions submitted to a comment plus all the always visible ones.
+ *
+ * @since 1.0.0
+ *
+ * @param int   $comment_id               The comment ID.
+ * @param array $always_visible_reactions Aliases of reactions always visible.
+ */
+function get_comment_reactions( $comment_id, $always_visible_reactions = array() ) {
 	$comment_meta = get_comment_meta( $comment_id );
 	$all = reactions_get_all_reactions();
 
 	$comment_reactions = array();
 
-	foreach ( $always_available_reactions as $always_available_reaction ) {
-		if ( isset( $all[ $always_available_reaction ] ) ) {
-			$reaction_to_add = $all[ $always_available_reaction ];
-			$reaction_to_add['available'] = 'always';
-			$comment_reactions[ $always_available_reaction ] = $reaction_to_add;
+	foreach ( $always_visible_reactions as $always_visible_reaction ) {
+		if ( isset( $all[ $always_visible_reaction ] ) ) {
+			$reaction_to_add = $all[ $always_visible_reaction ];
+			$reaction_to_add['visible'] = 'always';
+			$comment_reactions[ $always_visible_reaction ] = $reaction_to_add;
 		}
 	}
 
@@ -207,7 +226,7 @@ function reactions_show( $comment_id ) {
 	$html = '';
 	$html .= '<div class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><p>';
 
-	$reactions_to_show = get_comment_reactions( $comment_id, reactions_get_available_reactions() );
+	$reactions_to_show = get_comment_reactions( $comment_id, reactions_get_visible_reactions() );
 
 	foreach ( $reactions_to_show as $reaction_alias => $reaction_info ) {
 
@@ -216,20 +235,31 @@ function reactions_show( $comment_id ) {
 			$count_reactions = 0;
 		}
 
-		$is_always_available = isset( $reaction_info['available'] );
+		$is_always_visible = isset( $reaction_info['visible'] );
 
-		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions, $is_always_available );
+		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions, $is_always_visible );
 	}
 
-	$html .= '<button class="show_all_reactions" title="' . esc_attr( __( 'Add new', 'reactions' ) ) . '">+</button>';
+	/**
+	 * Whether to show the add new button.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param bool $show_add_new_button To show the add new button or not.
+	 */
+	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+
+	if ( $show_add_new_button ) {
+		$html .= '<button class="show_all_reactions" title="' . esc_attr( __( 'Add new reaction', 'reactions' ) ) . '">+</button>';
+	}
 
 	$html .= '</p></div>';
 
 	return $html;
 }
 
-function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0, $is_always_available = false ) {
-	$available_class = $is_always_available ? ' reaction-always-available' : '';
+function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0, $is_always_visible = false ) {
+	$available_class = $is_always_visible ? ' reaction-always-visible' : '';
 
 	/**
 	 * Reaction symbol.
@@ -253,30 +283,27 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 	 */
 	$description = apply_filters( 'reactions_description', $description, $symbol, $alias );
 
-	$html = '<button class="reaction reaction-' . esc_attr( $alias ) . $available_class . '" data-reaction="' . $alias . '"><span class="reactions-symbol">';
+	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" title="%s">', esc_attr( $alias ), $available_class, $alias, esc_attr( $description ) );
+	
+	$html .= sprintf( '<span class="reactions-symbol">%s</span>', esc_html( $symbol ) );
 
-	$html .= esc_html( $symbol );
+	$html .= sprintf( ' <span class="reactions-description">%s</span>', esc_html( $description ) );
 
-	$html .= '</span> <span class="reactions-description">';
+	$html .= sprintf( ' <span class="reactions-count"%s">', $count <= 0 ? ' style="display:none"' : '' );
 
-	$html .= esc_html( $description );
-
-	$html .= '</span> <span class="reactions-count"';
-
-	if ( $count <= 0 ) {
-		$html .= ' style="display:none"';
-	}
-
-	$html .= '> <span class="reactions-num">';
-
-	$html .= $count;
-
-	$html .= '</span></span></button>';
+	$html .= sprintf( ' <span class="reactions-num">%d</span></span></button>', $count );
 
 	return $html;
 }
 
 function reactions_selector() {
+
+	/** This filter is documented in reactions.php */
+	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+
+	if ( ! $show_add_new_button ) {
+		return;
+	}
 
 	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none;z-index:99"><?php
 
@@ -362,6 +389,13 @@ function reactions_submit_reaction() {
 		update_comment_meta( $comment_id, $meta_key, $count );
 	} else {
 		delete_comment_meta( $comment_id, $meta_key );
+	}
+
+	// Clear cache for the post on known big caching plugins
+	if ( function_exists( 'wp_cache_post_id_gc' ) ) {
+		wp_cache_post_id_gc( '', $comment->comment_post_ID );
+	} else if ( function_exists( 'w3tc_pgcache_flush_post' ) ) {
+		w3tc_pgcache_flush_post( $comment->comment_post_ID );
 	}
 
 	/**
