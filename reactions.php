@@ -54,8 +54,9 @@ function reactions_get_available_reactions() {
  */
 function reactions_show_after_comment_text( $comment_content, $comment = null ) {
 	if ( $comment && ! is_admin() ) {
-		reactions_show( $comment->comment_ID );
+		return $comment_content . reactions_show( $comment->comment_ID );
 	}
+	return $comment_content;
 }
 
 /**
@@ -65,7 +66,8 @@ function reactions_show_after_comment_text( $comment_content, $comment = null ) 
  */
 function reactions_show( $comment_id ) {
 
-	?><div class="reactions"><?php
+	$html = '';
+	$html .= '<div class="reactions">';
 
 	foreach ( reactions_get_available_reactions() as $reaction_alias => $reaction_info ) {
 
@@ -96,30 +98,34 @@ function reactions_show( $comment_id ) {
 		 */
 		$description = apply_filters( 'reactions_description', $reaction_info[ 'description' ], $reaction_info[ 'symbol' ], $reaction_alias );
 
-		?><button data-comment_id="<?php echo esc_attr( $comment_id ) ?>" data-reaction="<?php
+		$html .= '<button data-comment_id="' . esc_attr( $comment_id ) . '" data-reaction="';
 
-		echo esc_attr( $reaction_alias );
+		$html .= esc_attr( $reaction_alias );
 
-		?>" class="reaction"><span class="reactions-symbol"><?php
+		$html .= '" class="reaction"><span class="reactions-symbol">';
 
-		echo esc_html( $symbol );
+		$html .= esc_html( $symbol );
 
-		?></span> <span class="reactions-description"><?php
+		$html .= '</span> <span class="reactions-description">';
 
-		echo esc_html( $description );
+		$html .= esc_html( $description );
 
-		?></span> <span class="reactions-count"<?php
+		$html .= '</span> <span class="reactions-count"';
 
 		if ( $count_reactions <= 0 ) {
-			?> style="display:none"<?php
-		} ?>> <span class="reactions-num"><?php
+			$html .= ' style="display:none"';
+		}
 
-		echo $count_reactions;
+		$html .= '> <span class="reactions-num">';
 
-		?></span></span></button><?php
+		$html .= $count_reactions;
+
+		$html .= '</span></span></button>';
 	}
 
-	?></div><?php
+	$html .= '</div>';
+
+	return $html;
 }
 
 /**
