@@ -8,9 +8,7 @@
  */
 
 // TODO: Version 1:
-// TODO: reactions select UI: add a reaction when clicked
 // TODO: more emoji
-// TODO: bug: you can somehow give multiple reactions, if there are two symbols (or more). the reaction only stays for one symbol.
 // TODO: only show all button if there really are more
 
 define( 'REACTIONS_VERSION', '0.1.0' );
@@ -178,7 +176,7 @@ function reactions_get_all_reactions() {
 function reactions_show_after_comment_text( $comment_content, $comment = null ) {
 
 	// When comment is posted, the 'comment_text' filter is called without the second argument.
-	if ( $comment ) {
+	if ( $comment && ! is_admin() ) {
 		reactions_show( $comment->comment_ID );
 	}
 }

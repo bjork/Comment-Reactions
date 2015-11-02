@@ -96,8 +96,6 @@ jQuery(function ($) {
 		// Store it as a cookie.
 		createCookie( 'reactions', encode_reactions( user_reactions ), Reactions.cookie_days );
 
-		console.log(encode_reactions( user_reactions ));
-
 		reactions = user_reactions;
 	}
 
