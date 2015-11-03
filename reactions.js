@@ -22,7 +22,9 @@ jQuery(function ($) {
 		return null;
 	}
 
-	// Read user reactions from cookie and decode it.
+	/**
+	 * Read user reactions from cookie and decode it.
+	 */
 	function get_user_reactions() {
 		if ( reactions ) {
 			return reactions;
@@ -141,7 +143,11 @@ jQuery(function ($) {
 		}
 	}
 
-	function set_and_attach_click_handler() {
+	/**
+	 * Attach a click handler to all reactions.
+	 */
+	function attach_click_handlers_to_all() {
+
 		$('#reactions_all .reaction').click(function () {
 			var that = $( this );
 
@@ -152,8 +158,10 @@ jQuery(function ($) {
 			if ( existing.length <= 0 ) {
 				var clone = that.clone();
 
+				// Set it as a last of the reactions, before the Add new reaction button.
 				that.parents( '#reactions_all' ).prev().prev().after( clone );
 
+				// Attach a click handler for the new reaction..
 				clone.click( reaction_click_handler );
 
 				existing = clone;
@@ -161,10 +169,14 @@ jQuery(function ($) {
 
 			that.parents( '#reactions_all' ).hide();
 
+			// Simulate a click on the new reaction.
 			existing.click();
 		});
 	}
 
+	/**
+	 * Do all the things that need to be done when a reaction is clicked.
+	 */
 	function reaction_click_handler() {
 		var that = $( this );
 
@@ -178,7 +190,7 @@ jQuery(function ($) {
 		var comment_id = that.parents('.reactions').data('comment_id');
 		var reaction   = that.data('reaction');
 
-		// remove a reaction: -1, add one: 1
+		// Remove a reaction: -1, add one: '+1'.
 		var direction = that.hasClass( 'reacted' ) ? -1 : '+1';
 
 		update_with_count( that, direction );
@@ -210,6 +222,7 @@ jQuery(function ($) {
 		that.toggleClass( 'reacted' );
 	}
 
+	// Show all reaction button is clicked: show the reaction selector.
 	$('.reactions .show_all_reactions').click(function () {
 
 		var that = $( this );
@@ -225,8 +238,9 @@ jQuery(function ($) {
 
 		that.after( all );
 
+		// All reactions are new to the DOM, need to add handlers.
 		if ( attach_handlers ) {
-			set_and_attach_click_handler();
+			attach_click_handlers_to_all();
 		}
 
 		that.toggleClass( 'reaction reacted' );

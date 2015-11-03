@@ -8,7 +8,6 @@
  */
 
 // TODO: Version 1:
-// TODO: document the new functions
 // TODO: more emoji
 // TODO: position selector more intelligently
 // TODO: test in browsers
@@ -235,9 +234,9 @@ function reactions_show( $comment_id ) {
 			$count_reactions = 0;
 		}
 
-		$is_always_visible = isset( $reaction_info['visible'] );
+		$class = isset( $reaction_info['visible'] ) ? 'reaction-always-visible' : '';
 
-		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $comment_id, $count_reactions, $is_always_visible );
+		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $count_reactions, $class );
 	}
 
 	/**
@@ -258,8 +257,21 @@ function reactions_show( $comment_id ) {
 	return $html;
 }
 
-function reactions_single( $alias, $symbol, $description, $comment_id = 0, $count = 0, $is_always_visible = false ) {
-	$available_class = $is_always_visible ? ' reaction-always-visible' : '';
+/**
+ * Return the HTML of a single Emoji reaction.
+ *
+ * @since 1.0.0
+ *
+ * @param string $alias The Emoji "slug"
+ * @param string $alias The Emoji character.
+ * @param string $alias Text that describes the reaction.
+ * @param int $count Count of submitted reactions to be shown.
+ * @param string $class Extra CSS class.
+ */
+function reactions_single( $alias, $symbol, $description, $count = 0, $class = '' ) {
+	if ( $class ) {
+		$class = ' ' . trim( $class );
+	}
 
 	/**
 	 * Reaction symbol.
@@ -283,7 +295,7 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 	 */
 	$description = apply_filters( 'reactions_description', $description, $symbol, $alias );
 
-	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" title="%s">', esc_attr( $alias ), $available_class, $alias, esc_attr( $description ) );
+	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" title="%s">', esc_attr( $alias ), $class, $alias, esc_attr( $description ) );
 	
 	$html .= sprintf( '<span class="reactions-symbol">%s</span>', esc_html( $symbol ) );
 
@@ -296,6 +308,9 @@ function reactions_single( $alias, $symbol, $description, $comment_id = 0, $coun
 	return $html;
 }
 
+/**
+ * Prints out the selector element.
+ */
 function reactions_selector() {
 
 	/** This filter is documented in reactions.php */
@@ -305,6 +320,8 @@ function reactions_selector() {
 		return;
 	}
 
+	// Printed out as a script type="text/html" to avoid loading a huge number of
+	// images for Emoji replacements on non-supporting browsers.
 	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none;z-index:99"><?php
 
 	foreach ( reactions_get_all_reactions() as $reaction_alias => $reaction_info ) {
