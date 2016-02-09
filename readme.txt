@@ -11,7 +11,7 @@ Enable Slack style reactions to comments.
 
 == Description ==
 
-Add Slack style reactions to comments. For now, the plugin only supports Thumbs Up emoji reaction.
+Add Slack style reactions to comments. Developer friendly plugin with inline documented hooks. No admin UI for now.
 
 == Installation ==
 
