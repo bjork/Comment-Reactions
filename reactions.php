@@ -5,32 +5,48 @@
  * Description: Enable Slack style reactions to comments.
  * Author: Aki Björklund
  * Author URI: https://akibjorklund.com/
+ * Version: 1.0
+ * Text Domain: reactions
+ * Domain Path: /languages
  */
 
-// TODO: Version 1:
-// TODO: more emoji
-// TODO: position selector more intelligently
-// TODO: test in browsers
-// TODO: update version strings to 1.0
+define( 'REACTIONS_VERSION', '1.0.0' );
 
-define( 'REACTIONS_VERSION', '0.1.0' );
+// Currently the plugin does noting in wp-admin, so let's not load anything more either.
+if ( is_admin() ) {
+	return;
+}
 
 add_action( 'wp_enqueue_scripts',              'reactions_load_script_and_style' );
 add_action( 'wp_ajax_nopriv_reaction-submit',  'reactions_submit_reaction' );
 add_action( 'wp_ajax_reaction-submit',         'reactions_submit_reaction' );
 add_action( 'comment_text',                    'reactions_show_after_comment_text', 10, 2 );
 add_action( 'init',                            'reactions_load_textdomain' );
+add_action( 'init',                            'reactions_load_emoji' );
 add_action( 'wp_footer',                       'reactions_selector' );
 
 /**
  * Load plugin textdomain
+ *
+ * @since 1.0.0
  */
 function reactions_load_textdomain() {
 	load_plugin_textdomain( 'reactions', false, basename( dirname( __FILE__ ) ) . '/languages' );
 }
 
 /**
+ * Only load the huge Emoji definitions PHP file if really needed.
+ *
+ * @since 1.0.0
+ */
+function reactions_load_emoji() {
+	require_once( 'emoji-definitions.php' );
+}
+
+/**
  * Get the reactions available with one click.
+ *
+ * @since 1.0.0
  *
  * @return array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
  *                          (the actual emoji) and 'description' (human readable text
@@ -47,123 +63,6 @@ function reactions_get_visible_reactions() {
 	 * @param array $reactions The reaction aliases.
 	 */
 	return apply_filters( 'reactions_visible', $visible_reactions );
-}
-
-/**
- * All reactions on the system.
- *
- * @return array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
- *                          (the actual emoji) and 'description' (human readable text
- *                          description of the emoji) as a value.
- */
-function reactions_get_all_reactions() {
-	static $all_reactions;
-
-	if ( $all_reactions ) {
-		return $all_reactions;
-	}
-
-	$all_reactions = array(
-
-		'section' => __( 'People', 'reactions' ),
-
-		'grinning'              => array( 'symbol' => '😀', 'description' => __( 'Grinning',                'reactions' ) ),
-		'grin'                  => array( 'symbol' => '😁', 'description' => __( 'Grin',                    'reactions' ) ),
-		'joy'                   => array( 'symbol' => '😂', 'description' => __( 'Tears of joy',            'reactions' ) ),
-		'smiley'                => array( 'symbol' => '😃', 'description' => __( 'Smiley',                  'reactions' ) ),
-		'smile'                 => array( 'symbol' => '😄', 'description' => __( 'Smile',                   'reactions' ) ),
-		'sweat_smile'           => array( 'symbol' => '😅', 'description' => __( 'Smiling with cold sweat', 'reactions' ) ),
-		'satisfied'             => array( 'symbol' => '😆', 'description' => __( 'Satisfied',               'reactions' ) ),
-		'wink'                  => array( 'symbol' => '😉', 'description' => __( 'Wink',                    'reactions' ) ),
-		'blush'                 => array( 'symbol' => '😊', 'description' => __( 'Blush',                   'reactions' ) ),
-		'yum'                   => array( 'symbol' => '😋', 'description' => __( 'Yum',                     'reactions' ) ),
-		'sunglasses'            => array( 'symbol' => '😎', 'description' => __( 'Sunglasses',              'reactions' ) ),
-		'heart_eyes'            => array( 'symbol' => '😍', 'description' => __( 'Heart-shaped eyes',       'reactions' ) ),
-		'kissing'               => array( 'symbol' => '😘', 'description' => __( 'Kissing',                 'reactions' ) ),
-		'kissing_heart'         => array( 'symbol' => '😗', 'description' => __( 'Kissing, heart',          'reactions' ) ),
-		'kissing_smiling_eyes'  => array( 'symbol' => '😙', 'description' => __( 'Kissing, smiling eyes',   'reactions' ) ),
-		'kissing_closed_eyes'   => array( 'symbol' => '😚', 'description' => __( 'Kissing, closed eyes',    'reactions' ) ),
-		'relaxed'               => array( 'symbol' => '☺️', 'description' => __( 'Relaxed',                 'reactions' ) ),
-		//missing
-		//missing
-		'innocent'              => array( 'symbol' => '😇', 'description' => __( 'Innocent',                'reactions' ) ),
-		//missing
-		'neutral_face'          => array( 'symbol' => '😐', 'description' => __( 'Neutral face',            'reactions' ) ),
-		'expressionless'        => array( 'symbol' => '😑', 'description' => __( 'Expressionless',          'reactions' ) ),
-		'no_mouth'              => array( 'symbol' => '😶', 'description' => __( 'No mouth',                'reactions' ) ),
-		//missing face with rolling eyes
-		'smirk'                 => array( 'symbol' => '😏', 'description' => __( 'Smirk',                   'reactions' ) ),
-		'persevere'             => array( 'symbol' => '😣', 'description' => __( 'Persevere',               'reactions' ) ),
-		'disappointed_relieved' => array( 'symbol' => '😥', 'description' => __( 'Disappointed, relieved',  'reactions' ) ),
-		'open_mouth'            => array( 'symbol' => '😮', 'description' => __( 'Open mouth',              'reactions' ) ),
-		//missing zipper-mouth face
-		'hushed'                => array( 'symbol' => '😯', 'description' => __( 'Hushed',                  'reactions' ) ),
-		'sleepy'                => array( 'symbol' => '😪', 'description' => __( 'Sleepy',                  'reactions' ) ),
-		'tired_face'            => array( 'symbol' => '😫', 'description' => __( 'Tired',                   'reactions' ) ),
-		'sleeping'              => array( 'symbol' => '😴', 'description' => __( 'Sleeping',                'reactions' ) ),
-		'relieved'              => array( 'symbol' => '😌', 'description' => __( 'Relieved',                'reactions' ) ),
-		//missing nerd face
-		'stuck_out_tongue'               => array( 'symbol' => '😛', 'description' => __( 'Stuck out tongue',              'reactions' ) ),
-		'stuck_out_tongue_winking_eye'   => array( 'symbol' => '😜', 'description' => __( 'Stuck out tongue, winking eye', 'reactions' ) ),
-		'stuck_out_tongue_closed_eyes'   => array( 'symbol' => '😝', 'description' => __( 'Stuck out tongue, closed eyes', 'reactions' ) ),
-		//missing white frowning face
-		//missing slightly frowning face
-		'unamused'              => array( 'symbol' => '😒', 'description' => __( 'Unamused',               'reactions' ) ),
-		'sweat'                 => array( 'symbol' => '😓', 'description' => __( 'Sweat',                  'reactions' ) ),
-		'pensive'               => array( 'symbol' => '😔', 'description' => __( 'Pensive',                'reactions' ) ),
-		'confused'              => array( 'symbol' => '😕', 'description' => __( 'Confused',               'reactions' ) ),
-		'confounded'            => array( 'symbol' => '😖', 'description' => __( 'Confounded',             'reactions' ) ),
-		//missing upside-down face
-		'mask'                  => array( 'symbol' => '😷', 'description' => __( 'Mask',                   'reactions' ) ),
-		//missing face with thermometer
-		//missing face with head-bandage
-		//missing money-mouth face
-		'astonished'            => array( 'symbol' => '😲', 'description' => __( 'Astonished',             'reactions' ) ),
-		'disappointed'          => array( 'symbol' => '😞', 'description' => __( 'Disappointed',           'reactions' ) ),
-		'worried'               => array( 'symbol' => '😟', 'description' => __( 'Worried',                'reactions' ) ),
-		'triumph'               => array( 'symbol' => '😤', 'description' => __( 'Triumph',                'reactions' ) ),
-		'cry'                   => array( 'symbol' => '😢', 'description' => __( 'Cry',                    'reactions' ) ),
-		'sob'                   => array( 'symbol' => '😭', 'description' => __( 'Sob',                    'reactions' ) ),
-		'frowning'              => array( 'symbol' => '😦', 'description' => __( 'Frowning',               'reactions' ) ),
-		'anguished'             => array( 'symbol' => '😧', 'description' => __( 'Anguished',              'reactions' ) ),
-		'fearful'               => array( 'symbol' => '😨', 'description' => __( 'Fearful',                'reactions' ) ),
-		'weary'                 => array( 'symbol' => '😩', 'description' => __( 'Weary',                  'reactions' ) ),
-		'grimacing'             => array( 'symbol' => '😬', 'description' => __( 'Grimacing',              'reactions' ) ),
-		'cold_sweat'            => array( 'symbol' => '😰', 'description' => __( 'Cold sweat',             'reactions' ) ),
-		'scream'                => array( 'symbol' => '😱', 'description' => __( 'Scream',                 'reactions' ) ),
-		'flushed'               => array( 'symbol' => '😳', 'description' => __( 'Flushed',                'reactions' ) ),
-		'dizzy_face'            => array( 'symbol' => '😵', 'description' => __( 'Dizzy',                  'reactions' ) ),
-		'rage'                  => array( 'symbol' => '😡', 'description' => __( 'Rage',                   'reactions' ) ),
-		'angry'                 => array( 'symbol' => '😠', 'description' => __( 'Angry',                  'reactions' ) ),
-		'imp'                   => array( 'symbol' => '👿', 'description' => __( 'Imp',                    'reactions' ) ),
-		'smiling_imp'           => array( 'symbol' => '😈', 'description' => __( 'Smiling imp',            'reactions' ) ),
-		// ..
-		'thumbsup'              => array( 'symbol' => '👍', 'description' => __( 'Thumbs up',              'reactions' ) ),
-		'thumbsdown'            => array( 'symbol' => '👎', 'description' => __( 'Thumbs down',            'reactions' ) ),
-
-		// 'section 2' => __( 'Nature', 'reactions' ),
-
-		// 'section 3' => __( 'Food & Drink', 'reactions' ),
-
-		// 'section 4' => __( 'Celebration', 'reactions' ),
-
-		// 'section 5' => __( 'Activity', 'reactions' ),
-
-		// 'section 6' => __( 'Travel & Places', 'reactions' ),
-
-		// 'section 7' => __( 'Objects & Symbols', 'reactions' ),
-	);
-
-	/**
-	 * All reactions in the system.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array $reactions The reactions as an array. An alias as a key. Array of 'symbol'
-	 *                         (the actual emoji) and 'description' (human readable text
-	 *                         description of the emoji) as a value.
-	 */
-	return apply_filters( 'reactions_all', $all_reactions );
 }
 
 /**
@@ -203,6 +102,8 @@ function get_comment_reactions( $comment_id, $always_visible_reactions = array()
 /**
  * Comment content filter to show reactions for the comment.
  *
+ * @since 1.0.0
+ *
  * @param string     $comment_content The comment text.
  * @param WP_Comment $comment         The comment.
  */
@@ -218,12 +119,18 @@ function reactions_show_after_comment_text( $comment_content, $comment = null ) 
 /**
  * Print out reactions for a comment.
  *
+ * @since 1.0.0
+ *
  * @param int $comment_id The ID of the comment.
  */
 function reactions_show( $comment_id ) {
 
 	$html = '';
-	$html .= '<div class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><p>';
+	// The empty <i> below mysteriously solves the issue of not being able
+	// to add reactions to a comment with no reactions yet. Somehow without
+	// it there seems not to be any parents for the reaction button in the
+	// selector element, so determining the comment id fails.
+	$html .= '<p class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><i></i>';
 
 	$reactions_to_show = get_comment_reactions( $comment_id, reactions_get_visible_reactions() );
 
@@ -249,10 +156,10 @@ function reactions_show( $comment_id ) {
 	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
 
 	if ( $show_add_new_button ) {
-		$html .= '<button class="show_all_reactions" title="' . esc_attr( __( 'Add new reaction', 'reactions' ) ) . '">+</button>';
+		$html .= '<span class="all_reactions_wrapper"><button class="show_all_reactions" aria-controls="reactions_all" aria-label="' . esc_attr( __( 'Add new reaction', 'reactions' ) ) . '">😀+</button></span>';
 	}
 
-	$html .= '</p></div>';
+	$html .= '</p>';
 
 	return $html;
 }
@@ -273,45 +180,30 @@ function reactions_single( $alias, $symbol, $description, $count = 0, $class = '
 		$class = ' ' . trim( $class );
 	}
 
-	/**
-	 * Reaction symbol.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $symbol      The emoji symbol to be shown.
-	 * @param string $description The description of the symbol.
-	 * @param string $alias       The alias of the symbol the description is for.
-	 */
-	$symbol = apply_filters( 'reactions_symbol', $symbol, $description, $alias );
-
-	/**
-	 * Reaction description.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $description The description to be shown.
-	 * @param string $symbol      The emoji symbol the description is for.
-	 * @param string $alias       The alias of the symbol the description is for.
-	 */
-	$description = apply_filters( 'reactions_description', $description, $symbol, $alias );
-
-	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" title="%s">', esc_attr( $alias ), $class, $alias, esc_attr( $description ) );
+	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" aria-label="%s">', esc_attr( $alias ), $class, $alias, esc_attr( $description ) );
 	
 	$html .= sprintf( '<span class="reactions-symbol">%s</span>', esc_html( $symbol ) );
 
-	$html .= sprintf( ' <span class="reactions-description">%s</span>', esc_html( $description ) );
+	$html .= sprintf( '<span class="reactions-description">%s</span>', esc_html( $description ) );
 
-	$html .= sprintf( ' <span class="reactions-count"%s">', $count <= 0 ? ' style="display:none"' : '' );
+	$html .= sprintf( '<span class="reactions-count"%s">', $count <= 0 ? ' style="display:none"' : '' );
 
-	$html .= sprintf( ' <span class="reactions-num">%d</span></span></button>', $count );
+	$html .= sprintf( '<span class="reactions-num">%d</span></span></button>', $count );
 
 	return $html;
 }
 
 /**
  * Prints out the selector element.
+ *
+ * @since 1.0.0
  */
 function reactions_selector() {
+
+	// Selector is only available on pages that have comments.
+	if ( ! is_single() || ! comments_open() ) {
+		return;
+	}
 
 	/** This filter is documented in reactions.php */
 	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
@@ -333,7 +225,13 @@ function reactions_selector() {
 		echo reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'] );
 	}
 
-	?></div></script><?php
+	?></div></script><script type="text/template" id="reaction_template">
+		<button class="reaction reaction-<%= reaction.a %>" data-reaction="<%= reaction.a %>" aria-label="<%= reaction.d %>">
+			<span class="reactions-symbol"><%= reaction.s %></span>
+			<span class="reactions-description"><%= reaction.d %></span>
+			<span class="reactions-count" style="display:none"><span class="reactions-num">0</span></span>
+		</button>
+	</script><?php
 }
 
 /**
@@ -344,7 +242,15 @@ function reactions_load_script_and_style() {
 		return;
 	}
 
-	wp_enqueue_script( 'reactions', plugin_dir_url( __FILE__ ) . 'reactions.js', array( 'jquery' ), REACTIONS_VERSION, true );
+	wp_enqueue_script( 'reactions', plugin_dir_url( __FILE__ ) . 'reactions.min.js', array( 'jquery', 'underscore' ), REACTIONS_VERSION, true );
+
+	/** This filter is documented in reactions.php */
+	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+	$all_reactions = null;
+
+	if ( $show_add_new_button ) {
+		$all_reactions = reactions_filter_for_brevity( reactions_get_all_reactions() );
+	}
 
 	/**
 	 * Cookie expires in number of days.
@@ -354,7 +260,7 @@ function reactions_load_script_and_style() {
 	 * @param int $cookie_days The number of days the cookie is set to last.
 	 */
 	$cookie_days = apply_filters( 'reactions_cookie_days', 30 );
-	wp_localize_script( 'reactions', 'Reactions', array( 'ajax_url' => admin_url( 'admin-ajax.php' ), 'cookie_days' => $cookie_days ) );
+	wp_localize_script( 'reactions', 'Reactions', array( 'ajax_url' => admin_url( 'admin-ajax.php' ), 'cookie_days' => $cookie_days, 'all_reactions' => $all_reactions ) );
 
 	/**
 	 * The CSS URL the plugin enqueues.
@@ -370,7 +276,28 @@ function reactions_load_script_and_style() {
 }
 
 /**
+ * Minimizes key names of reactions array to save bandwidth.
+ *
+ * @since 1.0.0
+ *
+ * @param array $all All the reactions.
+ *
+ * @return array $reactions A minimized copy of reactions array.
+ */
+function reactions_filter_for_brevity( $all ) {
+	$filtered = array();
+
+	foreach ( $all as $alias => $value ) {
+		$new_value = array( 'a' => $alias, 's' => $value['symbol'], 'd' => $value['description'] );
+		$filtered[] = $new_value;
+	}
+	return $filtered;
+}
+
+/**
  * Ajax callback function to submit a reaction.
+ *
+ * @since 1.0.0
  */
 function reactions_submit_reaction() {
 
@@ -383,6 +310,7 @@ function reactions_submit_reaction() {
 	// Bail early if comment does not exist or reaction not available.
 	$comment = get_comment( $comment_id );
 	if ( null == $comment || ! array_key_exists( $reaction, reactions_get_all_reactions() ) ) {
+		echo $reaction;die();
 		echo json_encode( array( 'success' => false ) );
 		exit;
 	}
@@ -415,6 +343,9 @@ function reactions_submit_reaction() {
 		w3tc_pgcache_flush_post( $comment->comment_post_ID );
 	}
 
+	// Set comment cookie mainly to deal with potential caching issues.
+	reactions_set_comment_cookie( wp_get_current_user() );
+
 	/**
 	 * After submitting a reaction or a revert.
 	 *
@@ -432,7 +363,30 @@ function reactions_submit_reaction() {
 }
 
 /**
+ * Set comment cookie to deal with potential caching issues.
+ *
+ * @since 1.0.0
+ *
+ * @param object $user Comment author's object.
+ */
+function reactions_set_comment_cookie( $user ) {
+	if ( $user->exists() ) {
+		return;
+	}
+
+	/** This filter is documented in wp-includes/comment-functions.php */
+	$comment_cookie_lifetime = apply_filters( 'comment_cookie_lifetime', 30000000 );
+	$secure = ( 'https' === parse_url( home_url(), PHP_URL_SCHEME ) );
+
+	if ( ! isset( $_COOKIE[ 'comment_author_' . COOKIEHASH ] ) ) {
+		setcookie( 'comment_author_' . COOKIEHASH, '', time() + $comment_cookie_lifetime, COOKIEPATH, COOKIE_DOMAIN, $secure );
+	}
+}
+
+/**
  * A helper function to get a value from $_POST
+ *
+ * @since 1.0.0
  *
  * @param string $key The key.
  */

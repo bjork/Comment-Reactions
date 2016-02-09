@@ -1,23 +1,28 @@
 jQuery(function ($) {
 	var reactions = null;
 
-	function createCookie(name,value,days) {
-		if (days) {
+	function createCookie( name, value, days ) {
+		if ( days ) {
 			var date = new Date();
-			date.setTime(date.getTime()+(days*24*60*60*1000));
-			var expires = "; expires="+date.toGMTString();
+			date.setTime( date.getTime() + ( days * 24 * 60 * 60 * 1000 ) );
+			var expires = "; expires=" + date.toGMTString();
+		} else {
+			var expires = "";
 		}
-		else var expires = "";
-		document.cookie = name+"="+value+expires+"; path=/";
+		document.cookie = name + "=" + value + expires + "; path=/";
 	}
 
-	function readCookie(name) {
+	function readCookie( name ) {
 		var nameEQ = name + "=";
-		var ca = document.cookie.split(';');
-		for(var i=0;i < ca.length;i++) {
+		var ca = document.cookie.split( ';' );
+		for(var i = 0; i < ca.length; i++ ) {
 			var c = ca[i];
-			while (c.charAt(0)==' ') c = c.substring(1,c.length);
-			if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+			while ( c.charAt( 0 ) == ' ' ) {
+				c = c.substring( 1, c.length );
+			}
+			if ( c.indexOf(nameEQ) == 0 ) {
+				return c.substring( nameEQ.length, c.length );
+			}
 		}
 		return null;
 	}
@@ -31,7 +36,7 @@ jQuery(function ($) {
 		}
 
 		var user_reactions = {};
-		var cookie_reactions = readCookie('reactions');
+		var cookie_reactions = readCookie( 'reactions' );
 		if ( null == cookie_reactions ) {
 			return {};
 		}
@@ -113,8 +118,6 @@ jQuery(function ($) {
 			user_reactions[ comment_id ].splice( $.inArray( reaction, user_reactions[ comment_id ] ), 1 );;
 		}
 
-		console.log(encode_reactions( user_reactions ));
-
 		createCookie( 'reactions', encode_reactions( user_reactions ), Reactions.cookie_days );
 
 		reactions = user_reactions;
@@ -124,7 +127,7 @@ jQuery(function ($) {
 	 * Update UI with count.
 	 */
 	function update_with_count( that, amount ) {
-		var old_count = parseInt( that.find('.reactions-count .reactions-num').html(), 10 );
+		var old_count = parseInt( that.find( '.reactions-count .reactions-num' ).html(), 10 );
 		var new_count;
 		if ( amount < 0 ) {
 			new_count = old_count - 1;
@@ -133,13 +136,14 @@ jQuery(function ($) {
 		} else {
 			new_count = amount;
 		}
-		that.find('.reactions-count .reactions-num').html( new_count );
-		if ( new_count < 1 && ! that.hasClass('reaction-always-visible') ) {
+		that.find( '.reactions-count .reactions-num' ).html( new_count );
+		if ( new_count < 1 && ! that.hasClass( 'reaction-always-visible' ) ) {
 			that.remove();
-		} if ( 0 == new_count ) {
-			that.find('.reactions-count').hide();
+		}
+		if ( 0 == new_count ) {
+			that.find( '.reactions-count' ).hide();
 		} else {
-			that.find('.reactions-count').show();
+			that.find( '.reactions-count' ).show();
 		}
 	}
 
@@ -148,20 +152,20 @@ jQuery(function ($) {
 	 */
 	function attach_click_handlers_to_all() {
 
-		$('#reactions_all .reaction').click(function () {
+		$( '#reactions_all .reaction' ).click(function () {
 			var that = $( this );
 
 			var reactions = that.parents( '.reactions' );
-			var existing = reactions.children('p').children( '.reaction-' + that.data( 'reaction' ) );
+			var existing = reactions.children( '.reaction-' + that.data( 'reaction' ) );
 
 			// Add the reaction if not already exists
 			if ( existing.length <= 0 ) {
 				var clone = that.clone();
 
 				// Set it as a last of the reactions, before the Add new reaction button.
-				that.parents( '#reactions_all' ).prev().prev().after( clone );
+				that.parents( '#reactions_all' ).parent().prev().after( clone );
 
-				// Attach a click handler for the new reaction..
+				// Attach a click handler for the new reaction.
 				clone.click( reaction_click_handler );
 
 				existing = clone;
@@ -187,8 +191,8 @@ jQuery(function ($) {
 
 		that.addClass( 'reacting' );
 
-		var comment_id = that.parents('.reactions').data('comment_id');
-		var reaction   = that.data('reaction');
+		var comment_id = that.parents( '.reactions' ).data( 'comment_id' );
+		var reaction   = that.data( 'reaction' );
 
 		// Remove a reaction: -1, add one: '+1'.
 		var direction = that.hasClass( 'reacted' ) ? -1 : '+1';
@@ -220,19 +224,56 @@ jQuery(function ($) {
 		);
 
 		that.toggleClass( 'reacted' );
+		that.attr( 'aria-pressed', that.hasClass( 'reacted' ) ? 'true' : 'false' );
 	}
 
+	// Close all open reaction selectors
+	function closeOpenReactionsSelectors( that ) {
+		// Close only if one is open elsewhere.
+		if ( $( '.show_all_reactions.reacted' ).length 
+			&& ( ! that || that[0] != $( '.show_all_reactions.reacted' )[0] ) ) {
+			$( '.show_all_reactions.reacted' ).removeClass( 'reaction reacted' ).attr( 'aria-pressed', 'false' );
+			$( '#reactions_all' ).hide();
+		}
+	}
+
+	// Close reactions selectors if esc is hit
+	$( document ).keydown( function( e ) {
+		// Key code of esc is 27
+		if ( 27 == e.keyCode ) {
+			closeOpenReactionsSelectors();
+		}
+	} );
+
 	// Show all reaction button is clicked: show the reaction selector.
-	$('.reactions .show_all_reactions').click(function () {
+	$( '.reactions .show_all_reactions' ).click(function () {
 
 		var that = $( this );
+
+		closeOpenReactionsSelectors( that );
 
 		var all = $( '#reactions_all' );
 		var attach_handlers = false;
 
 		// Get all reactions from a script element
 		if ( all.length <= 0 ) {
-			all = $( $( '#reactions_all_wrapper' ).html() );
+			all_reactions = Reactions.all_reactions;
+
+			// Get the underscore template
+			_.templateSettings.variable = "reaction";
+			var button_template = _.template( $('#reaction_template').html() );
+
+			// Create buttons markup
+			var buttons = [];
+			_.each( all_reactions, function ( reaction ) {
+				buttons.push( button_template( reaction ) );
+			});
+			var all_buttons = buttons.join( '' );
+
+			// Wrap and create DOM
+			var full_html = '<div id="reactions_all" style="display:none;z-index:99">' + all_buttons + '</div>';
+			all = $( full_html );
+
 			attach_handlers = true;
 		}
 
@@ -244,12 +285,14 @@ jQuery(function ($) {
 		}
 
 		that.toggleClass( 'reaction reacted' );
+		that.attr( 'aria-pressed', that.hasClass( 'reacted' ) ? 'true' : 'false' );
+		that.attr( 'aria-expanded', that.hasClass( 'reacted' ) ? 'true' : 'false' );
 
-		$('#reactions_all').toggle();
+		$( '#reactions_all' ).toggle();
 
 	});
 
-	$('.reactions .reaction').click( reaction_click_handler );
+	$( '.reactions .reaction' ).click( reaction_click_handler );
 
 	// Prepare reactions according to the cookie.
 	// For each reaction test if cookie is set and set class to reflect that.
@@ -257,12 +300,13 @@ jQuery(function ($) {
 
 		var reactions = get_user_reactions();
 
-		var comment_id = $( this ).parents('.reactions').data( 'comment_id' );
+		var comment_id = $( this ).parents( '.reactions' ).data( 'comment_id' );
 		var reaction   = $( this ).data( 'reaction'   );
 
 		if ( 'undefined' != reactions[ comment_id ]
 			&& $.inArray( reaction, reactions[ comment_id ] ) >= 0 ) {
 			$( this ).addClass( 'reacted' );
+			$( this ).attr( 'aria-pressed', "true" );
 		}
 	});
 });

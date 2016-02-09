@@ -3,7 +3,7 @@ Contributors: akibjorklund
 Tags: comments
 Requires at least: 4.4
 Tested up to: 4.4
-Stable tag: 0.1.0
+Stable tag: 1.0.0
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -19,6 +19,9 @@ Add Slack style reactions to comments. For now, the plugin only supports Thumbs 
 1. Activate the plugin through the 'Plugins' menu in WordPress
 
 == Changelog ==
+
+= 1.0 =
+* First proper version with support to multiple reactions per comment
 
 = 0.1 =
 * Initial release
