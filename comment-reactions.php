@@ -1,37 +1,32 @@
 <?php
 /**
- * Plugin Name: Reactions
- * Plugin URI: https://wordpress.org/plugins/reactions/
+ * Plugin Name: Comment Reactions
+ * Plugin URI: https://wordpress.org/plugins/comment-reactions/
  * Description: Enable Slack style reactions to comments.
  * Author: Aki Björklund
  * Author URI: https://akibjorklund.com/
  * Version: 1.0
- * Text Domain: reactions
+ * Text Domain: comment-reactions
  * Domain Path: /languages
  */
 
-define( 'REACTIONS_VERSION', '1.0.0' );
+define( 'COMMENT_REACTIONS_VERSION', '1.0.0' );
 
-// Currently the plugin does noting in wp-admin, so let's not load anything more either.
-if ( is_admin() ) {
-	return;
-}
-
-add_action( 'wp_enqueue_scripts',              'reactions_load_script_and_style' );
-add_action( 'wp_ajax_nopriv_reaction-submit',  'reactions_submit_reaction' );
-add_action( 'wp_ajax_reaction-submit',         'reactions_submit_reaction' );
-add_action( 'comment_text',                    'reactions_show_after_comment_text', 10, 2 );
-add_action( 'init',                            'reactions_load_textdomain' );
-add_action( 'init',                            'reactions_load_emoji' );
-add_action( 'wp_footer',                       'reactions_selector' );
+add_action( 'wp_enqueue_scripts',              'creactions_load_script_and_style' );
+add_action( 'wp_ajax_nopriv_creaction-submit', 'creactions_submit_reaction' );
+add_action( 'wp_ajax_creaction-submit',        'creactions_submit_reaction' );
+add_action( 'comment_text',                    'creactions_show_after_comment_text', 10, 2 );
+add_action( 'init',                            'creactions_load_textdomain' );
+add_action( 'init',                            'creactions_load_emoji' );
+add_action( 'wp_footer',                       'creactions_selector' );
 
 /**
  * Load plugin textdomain
  *
  * @since 1.0.0
  */
-function reactions_load_textdomain() {
-	load_plugin_textdomain( 'reactions', false, basename( dirname( __FILE__ ) ) . '/languages' );
+function creactions_load_textdomain() {
+	load_plugin_textdomain( 'creactions', false, basename( dirname( __FILE__ ) ) . '/languages' );
 }
 
 /**
@@ -39,7 +34,7 @@ function reactions_load_textdomain() {
  *
  * @since 1.0.0
  */
-function reactions_load_emoji() {
+function creactions_load_emoji() {
 	require_once( 'emoji-definitions.php' );
 }
 
@@ -52,7 +47,7 @@ function reactions_load_emoji() {
  *                          (the actual emoji) and 'description' (human readable text
  *                          description of the emoji) as a value.
  */
-function reactions_get_visible_reactions() {
+function creactions_get_visible_reactions() {
 	$visible_reactions = array( 'thumbsup' );
 
 	/**
@@ -62,7 +57,7 @@ function reactions_get_visible_reactions() {
 	 *
 	 * @param array $reactions The reaction aliases.
 	 */
-	return apply_filters( 'reactions_visible', $visible_reactions );
+	return apply_filters( 'creactions_visible', $visible_reactions );
 }
 
 /**
@@ -73,9 +68,9 @@ function reactions_get_visible_reactions() {
  * @param int   $comment_id               The comment ID.
  * @param array $always_visible_reactions Aliases of reactions always visible.
  */
-function get_comment_reactions( $comment_id, $always_visible_reactions = array() ) {
+function creactions_get_comment_reactions( $comment_id, $always_visible_reactions = array() ) {
 	$comment_meta = get_comment_meta( $comment_id );
-	$all = reactions_get_all_reactions();
+	$all = creactions_get_all_reactions();
 
 	$comment_reactions = array();
 
@@ -88,8 +83,8 @@ function get_comment_reactions( $comment_id, $always_visible_reactions = array()
 	}
 
 	foreach ( $comment_meta as $single_meta => $meta_value ) {
-		if ( substr( $single_meta, 0, 10 ) == 'reactions_' ) {
-			$reaction = substr( $single_meta, 10 );
+		if ( substr( $single_meta, 0, 11 ) == 'creactions_' ) {
+			$reaction = substr( $single_meta, 11 );
 			if ( isset( $all[ $reaction ] ) && ! isset( $comment_reactions[ $reaction ] ) ) {
 				$comment_reactions[ $reaction ] = $all[ $reaction ];
 			}
@@ -107,11 +102,11 @@ function get_comment_reactions( $comment_id, $always_visible_reactions = array()
  * @param string     $comment_content The comment text.
  * @param WP_Comment $comment         The comment.
  */
-function reactions_show_after_comment_text( $comment_content, $comment = null ) {
+function creactions_show_after_comment_text( $comment_content, $comment = null ) {
 
 	// When comment is posted, the 'itext' filter is called without the second argument.
 	if ( $comment && ! is_admin() ) {
-		return $comment_content . reactions_show( $comment->comment_ID );
+		return $comment_content . creactions_show( $comment->comment_ID );
 	}
 	return $comment_content;
 }
@@ -123,7 +118,7 @@ function reactions_show_after_comment_text( $comment_content, $comment = null ) 
  *
  * @param int $comment_id The ID of the comment.
  */
-function reactions_show( $comment_id ) {
+function creactions_show( $comment_id ) {
 
 	$html = '';
 	// The empty <i> below mysteriously solves the issue of not being able
@@ -132,18 +127,18 @@ function reactions_show( $comment_id ) {
 	// selector element, so determining the comment id fails.
 	$html .= '<p class="reactions" data-comment_id="' . esc_attr( $comment_id ) . '"><i></i>';
 
-	$reactions_to_show = get_comment_reactions( $comment_id, reactions_get_visible_reactions() );
+	$reactions_to_show = creactions_get_comment_reactions( $comment_id, creactions_get_visible_reactions() );
 
 	foreach ( $reactions_to_show as $reaction_alias => $reaction_info ) {
 
-		$count_reactions = get_comment_meta( $comment_id, 'reactions_' . $reaction_alias, true );
+		$count_reactions = get_comment_meta( $comment_id, 'creactions_' . $reaction_alias, true );
 		if ( empty( $count_reactions ) ) {
 			$count_reactions = 0;
 		}
 
 		$class = isset( $reaction_info['visible'] ) ? 'reaction-always-visible' : '';
 
-		$html .= reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $count_reactions, $class );
+		$html .= creactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'], $count_reactions, $class );
 	}
 
 	/**
@@ -153,10 +148,10 @@ function reactions_show( $comment_id ) {
 	 *
 	 * @param bool $show_add_new_button To show the add new button or not.
 	 */
-	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+	$show_add_new_button = apply_filters( 'creactions_show_add_new_button', true );
 
 	if ( $show_add_new_button ) {
-		$html .= '<span class="all_reactions_wrapper"><button class="show_all_reactions" aria-controls="reactions_all" aria-label="' . esc_attr( __( 'Add new reaction', 'reactions' ) ) . '">😀+</button></span>';
+		$html .= '<span class="all_reactions_wrapper"><button class="show_all_reactions" aria-controls="reactions_all" aria-label="' . esc_attr( __( 'Add new reaction', 'creactions' ) ) . '">😀+</button></span>';
 	}
 
 	$html .= '</p>';
@@ -175,12 +170,12 @@ function reactions_show( $comment_id ) {
  * @param int $count Count of submitted reactions to be shown.
  * @param string $class Extra CSS class.
  */
-function reactions_single( $alias, $symbol, $description, $count = 0, $class = '' ) {
+function creactions_single( $alias, $symbol, $description, $count = 0, $class = '' ) {
 	if ( $class ) {
 		$class = ' ' . trim( $class );
 	}
 
-	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" aria-label="%s">', esc_attr( $alias ), $class, $alias, esc_attr( $description ) );
+	$html = sprintf( '<button class="reaction reaction-%s%s" data-reaction="%s" aria-label="%s">', esc_attr( $alias ), esc_attr( $class ), esc_attr( $alias ), esc_attr( $description ) );
 	
 	$html .= sprintf( '<span class="reactions-symbol">%s</span>', esc_html( $symbol ) );
 
@@ -198,7 +193,7 @@ function reactions_single( $alias, $symbol, $description, $count = 0, $class = '
  *
  * @since 1.0.0
  */
-function reactions_selector() {
+function creactions_selector() {
 
 	// Selector is only available on pages that have comments.
 	if ( ! is_single() || ! comments_open() ) {
@@ -206,7 +201,7 @@ function reactions_selector() {
 	}
 
 	/** This filter is documented in reactions.php */
-	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+	$show_add_new_button = apply_filters( 'creactions_show_add_new_button', true );
 
 	if ( ! $show_add_new_button ) {
 		return;
@@ -216,13 +211,13 @@ function reactions_selector() {
 	// images for Emoji replacements on non-supporting browsers.
 	?><script type="text/html" id="reactions_all_wrapper"><div id="reactions_all" style="display:none;z-index:99"><?php
 
-	foreach ( reactions_get_all_reactions() as $reaction_alias => $reaction_info ) {
+	foreach ( creactions_get_all_reactions() as $reaction_alias => $reaction_info ) {
 		if ( 'section' == substr( $reaction_alias, 0, 7 ) ) {
 			?><h2><?php echo esc_html( $reaction_info ) ?></h2><?php
 			continue;
 		}
 
-		echo reactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'] );
+		echo creactions_single( $reaction_alias, $reaction_info['symbol'], $reaction_info['description'] );
 	}
 
 	?></div></script><script type="text/template" id="reaction_template">
@@ -237,19 +232,19 @@ function reactions_selector() {
 /**
  * Enqueue scripts and styles for the plugin.
  */
-function reactions_load_script_and_style() {
+function creactions_load_script_and_style() {
 	if ( ! is_singular() ) {
 		return;
 	}
 
-	wp_enqueue_script( 'reactions', plugin_dir_url( __FILE__ ) . 'reactions.min.js', array( 'jquery', 'underscore' ), REACTIONS_VERSION, true );
+	wp_enqueue_script( 'creactions', plugin_dir_url( __FILE__ ) . 'comment-reactions.min.js', array( 'jquery', 'underscore' ), COMMENT_REACTIONS_VERSION, true );
 
 	/** This filter is documented in reactions.php */
-	$show_add_new_button = apply_filters( 'reactions_show_add_new_button', true );
+	$show_add_new_button = apply_filters( 'creactions_show_add_new_button', true );
 	$all_reactions = null;
 
 	if ( $show_add_new_button ) {
-		$all_reactions = reactions_filter_for_brevity( reactions_get_all_reactions() );
+		$all_reactions = creactions_filter_for_brevity( creactions_get_all_reactions() );
 	}
 
 	/**
@@ -259,8 +254,8 @@ function reactions_load_script_and_style() {
 	 *
 	 * @param int $cookie_days The number of days the cookie is set to last.
 	 */
-	$cookie_days = apply_filters( 'reactions_cookie_days', 30 );
-	wp_localize_script( 'reactions', 'Reactions', array( 'ajax_url' => admin_url( 'admin-ajax.php' ), 'cookie_days' => $cookie_days, 'all_reactions' => $all_reactions ) );
+	$cookie_days = apply_filters( 'creactions_cookie_days', 30 );
+	wp_localize_script( 'creactions', 'Comment_Reactions', array( 'ajax_url' => admin_url( 'admin-ajax.php' ), 'cookie_days' => $cookie_days, 'all_reactions' => $all_reactions ) );
 
 	/**
 	 * The CSS URL the plugin enqueues.
@@ -269,9 +264,9 @@ function reactions_load_script_and_style() {
 	 *
 	 * @param string|null $src URL of the CSS file. Null if not to be loaded.
 	 */
-	$css = apply_filters( 'reactions_css', plugin_dir_url( __FILE__ ) . 'reactions.css' );
+	$css = apply_filters( 'creactions_css', plugin_dir_url( __FILE__ ) . 'comment-reactions.css' );
 	if ( $css ) {
-		wp_enqueue_style( 'reactions', $css, null, REACTIONS_VERSION );
+		wp_enqueue_style( 'creactions', $css, null, COMMENT_REACTIONS_VERSION );
 	}
 }
 
@@ -284,7 +279,7 @@ function reactions_load_script_and_style() {
  *
  * @return array $reactions A minimized copy of reactions array.
  */
-function reactions_filter_for_brevity( $all ) {
+function creactions_filter_for_brevity( $all ) {
 	$filtered = array();
 
 	foreach ( $all as $alias => $value ) {
@@ -299,24 +294,23 @@ function reactions_filter_for_brevity( $all ) {
  *
  * @since 1.0.0
  */
-function reactions_submit_reaction() {
+function creactions_submit_reaction() {
 
 	header( "Content-Type: application/json" );
 
-	$comment_id = ( int )reactions_from_post( 'comment_id' );
-	$reaction   = reactions_from_post( 'reaction' );
-	$method     = reactions_from_post( 'method'   );
+	$comment_id = ( int )creactions_from_post( 'comment_id' );
+	$reaction   = sanitize_key( creactions_from_post( 'reaction' ) );
+	$method     = sanitize_key( creactions_from_post( 'method'   ) );
 
 	// Bail early if comment does not exist or reaction not available.
 	$comment = get_comment( $comment_id );
-	if ( null == $comment || ! array_key_exists( $reaction, reactions_get_all_reactions() ) ) {
-		echo $reaction;die();
+	if ( null == $comment || ! array_key_exists( $reaction, creactions_get_all_reactions() ) ) {
 		echo json_encode( array( 'success' => false ) );
 		exit;
 	}
 
 	// Get reaction count before the action.
-	$meta_key = 'reactions_' . $reaction;
+	$meta_key = 'creactions_' . $reaction;
 	$count = get_comment_meta( $comment_id, $meta_key, true );
 	if ( empty( $count ) ) {
 		$count = 0;
@@ -327,6 +321,10 @@ function reactions_submit_reaction() {
 		$count = ( int )$count + 1;
 	} else if ( 'revert' == $method ) {
 		$count = ( int )$count - 1;
+	} else {
+		// Invalid method
+		echo json_encode( array( 'success' => false ) );
+		exit;
 	}
 
 	// Update comment meta accordingly.
@@ -344,7 +342,7 @@ function reactions_submit_reaction() {
 	}
 
 	// Set comment cookie mainly to deal with potential caching issues.
-	reactions_set_comment_cookie( wp_get_current_user() );
+	creactions_set_comment_cookie( wp_get_current_user() );
 
 	/**
 	 * After submitting a reaction or a revert.
@@ -356,7 +354,7 @@ function reactions_submit_reaction() {
 	 * @param int    $method   Comment ID.
 	 * @param int    $count    Count of these reactions on this comment after the execution.
 	 */
-	do_action( 'reactions_after_submit', $method, $comment_id, $count );
+	do_action( 'creactions_after_submit', $method, $comment_id, $count );
 
 	echo json_encode( array( 'success' => true, 'count' => $count ) );
 	exit;
@@ -369,7 +367,7 @@ function reactions_submit_reaction() {
  *
  * @param object $user Comment author's object.
  */
-function reactions_set_comment_cookie( $user ) {
+function creactions_set_comment_cookie( $user ) {
 	if ( $user->exists() ) {
 		return;
 	}
@@ -390,9 +388,9 @@ function reactions_set_comment_cookie( $user ) {
  *
  * @param string $key The key.
  */
-function reactions_from_post( $key ) {
+function creactions_from_post( $key ) {
 	if ( isset( $_POST[ $key ] ) ) {
-		return $_POST[ $key ];
+		return sanitize_text_field( $_POST[ $key ] );
 	}
 	return null;
 }

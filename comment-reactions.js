@@ -2,12 +2,12 @@ jQuery(function ($) {
 	var reactions = null;
 
 	function createCookie( name, value, days ) {
+		var expires = "";
+
 		if ( days ) {
 			var date = new Date();
 			date.setTime( date.getTime() + ( days * 24 * 60 * 60 * 1000 ) );
-			var expires = "; expires=" + date.toGMTString();
-		} else {
-			var expires = "";
+			expires = "; expires=" + date.toGMTString();
 		}
 		document.cookie = name + "=" + value + expires + "; path=/";
 	}
@@ -20,7 +20,7 @@ jQuery(function ($) {
 			while ( c.charAt( 0 ) == ' ' ) {
 				c = c.substring( 1, c.length );
 			}
-			if ( c.indexOf(nameEQ) == 0 ) {
+			if ( c.indexOf( nameEQ ) === 0 ) {
 				return c.substring( nameEQ.length, c.length );
 			}
 		}
@@ -36,8 +36,8 @@ jQuery(function ($) {
 		}
 
 		var user_reactions = {};
-		var cookie_reactions = readCookie( 'reactions' );
-		if ( null == cookie_reactions ) {
+		var cookie_reactions = readCookie( 'creactions' );
+		if ( null === cookie_reactions ) {
 			return {};
 		}
 
@@ -50,12 +50,13 @@ jQuery(function ($) {
 				var reaction_comment_id = reactions_data[0];
 				var the_reactions = reactions_data[1].split( '.' );
 
-				if ( '' == the_reactions[0] ) {
+				if ( '' === the_reactions[0] ) {
 					the_reactions = [];
 				}
+
+				user_reactions[ reaction_comment_id ] = the_reactions;
 			}
 
-			user_reactions[ reaction_comment_id ] = the_reactions;
 		}
 
 		reactions = user_reactions;
@@ -101,7 +102,7 @@ jQuery(function ($) {
 		}
 
 		// Store it as a cookie.
-		createCookie( 'reactions', encode_reactions( user_reactions ), Reactions.cookie_days );
+		createCookie( 'creactions', encode_reactions( user_reactions ), Comment_Reactions.cookie_days );
 
 		reactions = user_reactions;
 	}
@@ -113,12 +114,12 @@ jQuery(function ($) {
 
 		var user_reactions = get_user_reactions();
 
-		if ( 'undefined' != typeof user_reactions[ comment_id ]
-			&& $.inArray( reaction, user_reactions[ comment_id ] ) >= 0 ) {
-			user_reactions[ comment_id ].splice( $.inArray( reaction, user_reactions[ comment_id ] ), 1 );;
+		if ( 'undefined' != typeof user_reactions[ comment_id ] &&
+			$.inArray( reaction, user_reactions[ comment_id ] ) >= 0 ) {
+			user_reactions[ comment_id ].splice( $.inArray( reaction, user_reactions[ comment_id ] ), 1 );
 		}
 
-		createCookie( 'reactions', encode_reactions( user_reactions ), Reactions.cookie_days );
+		createCookie( 'creactions', encode_reactions( user_reactions ), Comment_Reactions.cookie_days );
 
 		reactions = user_reactions;
 	}
@@ -140,7 +141,7 @@ jQuery(function ($) {
 		if ( new_count < 1 && ! that.hasClass( 'reaction-always-visible' ) ) {
 			that.remove();
 		}
-		if ( 0 == new_count ) {
+		if ( 0 === new_count ) {
 			that.find( '.reactions-count' ).hide();
 		} else {
 			that.find( '.reactions-count' ).show();
@@ -206,8 +207,8 @@ jQuery(function ($) {
 		}
 
 		jQuery.post(
-			Reactions.ajax_url, {
-				action:     'reaction-submit',
+			Comment_Reactions.ajax_url, {
+				action:     'creaction-submit',
 				comment_id: comment_id,
 				reaction:   reaction,
 				method:     '+1' == direction ? 'react' : 'revert',
@@ -230,8 +231,8 @@ jQuery(function ($) {
 	// Close all open reaction selectors
 	function closeOpenReactionsSelectors( that ) {
 		// Close only if one is open elsewhere.
-		if ( $( '.show_all_reactions.reacted' ).length 
-			&& ( ! that || that[0] != $( '.show_all_reactions.reacted' )[0] ) ) {
+		if ( $( '.show_all_reactions.reacted' ).length &&
+			( ! that || that[0] != $( '.show_all_reactions.reacted' )[0] ) ) {
 			$( '.show_all_reactions.reacted' ).removeClass( 'reaction reacted' ).attr( 'aria-pressed', 'false' );
 			$( '#reactions_all' ).hide();
 		}
@@ -257,7 +258,7 @@ jQuery(function ($) {
 
 		// Get all reactions from a script element
 		if ( all.length <= 0 ) {
-			all_reactions = Reactions.all_reactions;
+			all_reactions = Comment_Reactions.all_reactions;
 
 			// Get the underscore template
 			_.templateSettings.variable = "reaction";
@@ -303,8 +304,8 @@ jQuery(function ($) {
 		var comment_id = $( this ).parents( '.reactions' ).data( 'comment_id' );
 		var reaction   = $( this ).data( 'reaction'   );
 
-		if ( 'undefined' != reactions[ comment_id ]
-			&& $.inArray( reaction, reactions[ comment_id ] ) >= 0 ) {
+		if ( 'undefined' != reactions[ comment_id ] &&
+			$.inArray( reaction, reactions[ comment_id ] ) >= 0 ) {
 			$( this ).addClass( 'reacted' );
 			$( this ).attr( 'aria-pressed', "true" );
 		}
