@@ -1,14 +1,14 @@
 <?php
-/**
- * Plugin Name: Comment Reactions
- * Plugin URI: https://wordpress.org/plugins/comment-reactions/
- * Description: Enable Slack style reactions to comments.
- * Author: Aki Björklund
- * Author URI: https://akibjorklund.com/
+/*
+Plugin Name: Comment Reactions
+Plugin URI: https://wordpress.org/plugins/comment-reactions/
+Description: Enable Slack style reactions to comments.
+Author: Aki Björklund
+Author URI: https://akibjorklund.com/
 Version: 1.0.0
- * Text Domain: comment-reactions
- * Domain Path: /languages
- */
+Text Domain: comment-reactions
+Domain Path: /languages
+*/
 
 define( 'COMMENT_REACTIONS_VERSION', '1.0.0' );
 
