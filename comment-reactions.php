@@ -5,7 +5,7 @@
  * Description: Enable Slack style reactions to comments.
  * Author: Aki Björklund
  * Author URI: https://akibjorklund.com/
- * Version: 1.0
+ * Version: 1.0.0
  * Text Domain: comment-reactions
  * Domain Path: /languages
  */
