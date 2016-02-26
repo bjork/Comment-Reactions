@@ -1,4 +1,4 @@
-=== Reactions ===
+=== Comment Reactions ===
 Contributors: akibjorklund
 Tags: comments, emoji
 Requires at least: 4.4
