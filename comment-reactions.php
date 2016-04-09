@@ -5,20 +5,19 @@ Plugin URI: https://wordpress.org/plugins/comment-reactions/
 Description: Enable Slack style reactions to comments.
 Author: Aki Björklund
 Author URI: https://akibjorklund.com/
-Version: 1.0.0
+Version: 1.1.0
 Text Domain: comment-reactions
 Domain Path: /languages
 */
-
 define( 'COMMENT_REACTIONS_VERSION', '1.0.0' );
+define( 'COMMENT_REACTIONS_REST_NAMESPACE', 'comment-reactions/v1' );
 
 add_action( 'wp_enqueue_scripts',              'creactions_load_script_and_style' );
-add_action( 'wp_ajax_nopriv_creaction-submit', 'creactions_submit_reaction' );
-add_action( 'wp_ajax_creaction-submit',        'creactions_submit_reaction' );
 add_action( 'comment_text',                    'creactions_show_after_comment_text', 10, 2 );
 add_action( 'init',                            'creactions_load_textdomain' );
 add_action( 'init',                            'creactions_load_emoji' );
 add_action( 'wp_footer',                       'creactions_selector' );
+add_action( 'rest_api_init',                   'creactions_register_rest_routes' );
 
 /**
  * Load plugin textdomain
@@ -237,7 +236,8 @@ function creactions_load_script_and_style() {
 		return;
 	}
 
-	wp_enqueue_script( 'creactions', plugin_dir_url( __FILE__ ) . 'comment-reactions.min.js', array( 'jquery', 'underscore' ), COMMENT_REACTIONS_VERSION, true );
+	$js_suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '.min.js' : '.js';
+	wp_enqueue_script( 'creactions', plugin_dir_url( __FILE__ ) . 'comment-reactions' . $js_suffix, array( 'jquery', 'underscore' ), COMMENT_REACTIONS_VERSION, true );
 
 	/** This filter is documented in reactions.php */
 	$show_add_new_button = apply_filters( 'creactions_show_add_new_button', true );
@@ -255,7 +255,15 @@ function creactions_load_script_and_style() {
 	 * @param int $cookie_days The number of days the cookie is set to last.
 	 */
 	$cookie_days = apply_filters( 'creactions_cookie_days', 30 );
-	wp_localize_script( 'creactions', 'Comment_Reactions', array( 'ajax_url' => admin_url( 'admin-ajax.php' ), 'cookie_days' => $cookie_days, 'all_reactions' => $all_reactions ) );
+	wp_localize_script(
+		'creactions',
+		'Comment_Reactions',
+		array(
+			'rest_url' => get_rest_url() . COMMENT_REACTIONS_REST_NAMESPACE,
+			'cookie_days' => $cookie_days,
+			'all_reactions' => $all_reactions
+		)
+	);
 
 	/**
 	 * The CSS URL the plugin enqueues.
@@ -290,24 +298,47 @@ function creactions_filter_for_brevity( $all ) {
 }
 
 /**
- * Ajax callback function to submit a reaction.
+ * Register REST routes.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
-function creactions_submit_reaction() {
+function creactions_register_rest_routes() {
+	register_rest_route( COMMENT_REACTIONS_REST_NAMESPACE, '/comment/(?P<id>\d+)', array(
+		'methods'  => 'POST',
+		'callback' => 'creactions_rest_request_handler',
+		'args' => array(
+			'id' => array(
+				'validate_callback' => function( $param, $request, $key ) {
+					return null != get_comment( absint( $param ) );
+				}
+			),
+			'reaction' => array(
+				'validate_callback' => function( $param, $request, $key ) {
+					return array_key_exists( $param, creactions_get_all_reactions() );
+				}
+			),
+			'action' => array(
+				'validate_callback' => function( $param, $request, $key ) {
+					return in_array( $param, array( 'react', 'revert' ) );
+				}
+			),
+		),
+	) );
+}
 
-	header( "Content-Type: application/json" );
-
-	$comment_id = ( int )creactions_from_post( 'comment_id' );
-	$reaction   = sanitize_key( creactions_from_post( 'reaction' ) );
-	$method     = sanitize_key( creactions_from_post( 'method'   ) );
-
-	// Bail early if comment does not exist or reaction not available.
-	$comment = get_comment( $comment_id );
-	if ( null == $comment || ! array_key_exists( $reaction, creactions_get_all_reactions() ) ) {
-		echo json_encode( array( 'success' => false ) );
-		exit;
-	}
+/**
+ * Handler for a REST Request.
+ *
+ * @since 1.1.0
+ * 
+ * @todo There is a race condition in counting of the reactions.
+ *
+ * @param WP_REST_Request $request The REST Request.
+ */
+function creactions_rest_request_handler( WP_REST_Request $request ) {
+	$reaction   = sanitize_key( $request->get_param( 'reaction' ) );
+	$action     = sanitize_key( $request->get_param( 'action' ) );
+	$comment_id = absint( $request->get_param( 'id' ) );
 
 	// Get reaction count before the action.
 	$meta_key = 'creactions_' . $reaction;
@@ -317,14 +348,10 @@ function creactions_submit_reaction() {
 	}
 
 	// Figure out the new reaction count.
-	if ( 'react' == $method ) {
+	if ( 'react' == $action ) {
 		$count = ( int )$count + 1;
-	} else if ( 'revert' == $method ) {
-		$count = ( int )$count - 1;
 	} else {
-		// Invalid method
-		echo json_encode( array( 'success' => false ) );
-		exit;
+		$count = ( int )$count - 1;
 	}
 
 	// Update comment meta accordingly.
@@ -334,14 +361,8 @@ function creactions_submit_reaction() {
 		delete_comment_meta( $comment_id, $meta_key );
 	}
 
-	// Clear cache for the post on known big caching plugins
-	if ( function_exists( 'wp_cache_post_id_gc' ) ) {
-		wp_cache_post_id_gc( '', $comment->comment_post_ID );
-	} else if ( function_exists( 'w3tc_pgcache_flush_post' ) ) {
-		w3tc_pgcache_flush_post( $comment->comment_post_ID );
-	}
-
-	// Set comment cookie mainly to deal with potential caching issues.
+	// Deal with caching.
+	creactions_clear_caching( $comment_id );
 	creactions_set_comment_cookie( wp_get_current_user() );
 
 	/**
@@ -349,15 +370,31 @@ function creactions_submit_reaction() {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $reaction Reaction (Emoji) alias.
-	 * @param string $method   The submitted method, 'react' or 'revert'.
-	 * @param int    $method   Comment ID.
-	 * @param int    $count    Count of these reactions on this comment after the execution.
+	 * @param string $reaction   Reaction (Emoji) alias.
+	 * @param string $action     The submitted action, 'react' or 'revert'.
+	 * @param int    $comment_id Comment ID.
+	 * @param int    $count      Count of these reactions on this comment after the execution.
 	 */
-	do_action( 'creactions_after_submit', $method, $comment_id, $count );
+	do_action( 'creactions_after_submit', $action, $comment_id, $count );
 
-	echo json_encode( array( 'success' => true, 'count' => $count ) );
-	exit;
+	return new WP_REST_Response( array( 'count' => $count ) );
+}
+
+/**
+ * Clear cache for the post on known big caching plugins.
+ * 
+ * @since 1.1.0
+ *
+ * @param int $comment_id ID of the comment there was a reaction to.
+ */
+function creactions_clear_caching( $comment_id ) {
+	$comment = get_comment( $comment_id );
+
+	if ( function_exists( 'wp_cache_post_id_gc' ) ) {
+		wp_cache_post_id_gc( '', $comment->comment_post_ID );
+	} else if ( function_exists( 'w3tc_pgcache_flush_post' ) ) {
+		w3tc_pgcache_flush_post( $comment->comment_post_ID );
+	}
 }
 
 /**
@@ -379,18 +416,4 @@ function creactions_set_comment_cookie( $user ) {
 	if ( ! isset( $_COOKIE[ 'comment_author_' . COOKIEHASH ] ) ) {
 		setcookie( 'comment_author_' . COOKIEHASH, '', time() + $comment_cookie_lifetime, COOKIEPATH, COOKIE_DOMAIN, $secure );
 	}
-}
-
-/**
- * A helper function to get a value from $_POST
- *
- * @since 1.0.0
- *
- * @param string $key The key.
- */
-function creactions_from_post( $key ) {
-	if ( isset( $_POST[ $key ] ) ) {
-		return sanitize_text_field( $_POST[ $key ] );
-	}
-	return null;
 }

@@ -206,23 +206,19 @@ jQuery(function ($) {
 			remove_user_reaction( comment_id, reaction );
 		}
 
-		jQuery.post(
-			Comment_Reactions.ajax_url, {
-				action:     'creaction-submit',
-				comment_id: comment_id,
-				reaction:   reaction,
-				method:     '+1' == direction ? 'react' : 'revert',
-			}, function( response ) {
+		jQuery.ajax( Comment_Reactions.rest_url + '/comment/' + comment_id, {
+			type: 'POST',
+			data: {
+				reaction: reaction,
+				action:   '+1' == direction ? 'react' : 'revert',  
+			},
+			complete: function ( response ) {
 				that.removeClass( 'reacting' );
-
-				if ( response.success ) {
-					update_with_count( that, response.count );
-				} else {
-					// revert too hasty UI update
-					update_with_count( that, response.count );
+				if ( response.responseJSON.count ) {
+					update_with_count( that, response.responseJSON.count );
 				}
 			}
-		);
+		});
 
 		that.toggleClass( 'reacted' );
 		that.attr( 'aria-pressed', that.hasClass( 'reacted' ) ? 'true' : 'false' );

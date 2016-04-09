@@ -20,6 +20,9 @@ Add Slack style reactions to comments. Developer friendly plugin with inline doc
 
 == Changelog ==
 
+= 1.1 =
+* Instead of `admin-ajax.php` use the more performant REST API.
+
 = 1.0 =
 * First proper version with support to multiple reactions per comment
 
